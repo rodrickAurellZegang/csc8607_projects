@@ -10,10 +10,10 @@
 
 ## 0) Informations générales
 
-- **Étudiant·e** : _Nom, Prénom_
-- **Projet** : _Intitulé (dataset × modèle)_
-- **Dépôt Git** : _URL publique_
-- **Environnement** : `python == ...`, `torch == ...`, `cuda == ...`  
+- **Étudiant·e** : ZEGANG Rodrick
+- **Projet** : SVHN × CNN convolutionnel personnalisé
+- **Dépôt Git** : https://github.com/rodrickAurellZegang/csc8607_projects.git
+- **Environnement** : `python == 3.12`, `torch == 2.9.1+cu128`, `cuda == NVIDIA H100 (MIG 1g.12GB)`  
 - **Commandes utilisées** :
   - Entraînement : `python -m src.train --config configs/config.yaml`
   - LR finder : `python -m src.lr_finder --config configs/config.yaml`
@@ -25,58 +25,64 @@
 ## 1) Données
 
 ### 1.1 Description du dataset
-- **Source** (lien) :
-- **Type d’entrée** (image / texte / audio / séries) :
-- **Tâche** (multiclasses, multi-label, régression) :
-- **Dimensions d’entrée attendues** (`meta["input_shape"]`) :
-- **Nombre de classes** (`meta["num_classes"]`) :
 
-**D1.** Quel dataset utilisez-vous ? D’où provient-il et quel est son format (dimensions, type d’entrée) ?
+- **Source** : http://ufldl.stanford.edu/housenumbers/
+- **Type d’entrée** : Images couleur (RGB)
+- **Tâche** : Classification multi-classes
+- **Dimensions d’entrée attendues** (`meta["input_shape"]`) : `(3, 32, 32)`
+- **Nombre de classes** (`meta["num_classes"]`) : `10`
+
+**D1.**  
+Le dataset utilisé est **SVHN (Street View House Numbers)**, fourni par l’université de Stanford.  
+Il contient des images couleur de taille **32×32 pixels**, représentant des chiffres (de 0 à 9) extraits automatiquement de photos de numéros de rue.  
+
+Chaque image est associée à **un seul label** correspondant au chiffre central, ce qui en fait un problème de **classification multi-classes à 10 classes**. Les données sont stockées sous forme d’images et chargées via `torchvision.datasets.SVHN`.
 
 ### 1.2 Splits et statistiques
 
 | Split | #Exemples | Particularités (déséquilibre, longueur moyenne, etc.) |
 |------:|----------:|--------------------------------------------------------|
-| Train |           |                                                        |
-| Val   |           |                                                        |
-| Test  |           |                                                        |
+| Train | ~59 300   | Léger déséquilibre entre classes                      |
+| Val   | ~6 600    | Sous-ensemble du train (10 %)                         |
+| Test  | 26 032    | Distribution similaire au train                       |
 
-**D2.** Donnez la taille de chaque split et le nombre de classes.  
-**D3.** Si vous avez créé un split (ex. validation), expliquez **comment** (stratification, ratio, seed).
+**D2.**  
+Le dataset contient **10 classes** (chiffres de 0 à 9).  
+Le split d’entraînement est divisé en **train** et **validation**, tandis que le split **test** est fourni officiellement par le dataset.
 
-**D4.** Donnez la **distribution des classes** (graphique ou tableau) et commentez en 2–3 lignes l’impact potentiel sur l’entraînement.  
-**D5.** Mentionnez toute particularité détectée (tailles variées, longueurs variables, multi-labels, etc.).
+**D3.**  
+Le jeu de validation a été créé en prélevant **10 % du jeu d’entraînement**, de manière aléatoire et reproductible grâce à un **seed fixé à 42**.  
+Aucune stratification explicite n’a été appliquée, mais la distribution des classes reste proche de celle du train.
+
+**D4.**  
+La distribution des classes montre un **déséquilibre modéré**, certaines classes (notamment le chiffre *1*) étant plus représentées que d’autres.  
+Ce déséquilibre peut favoriser les classes fréquentes lors de l’entraînement, ce qui justifie l’utilisation de métriques globales comme l’accuracy.
+
+![alt text](<Capture d’écran 2026-01-12 à 00.12.41.png>)
+
+**D5.**  
+Toutes les images ont une taille fixe de **32×32 pixels**, avec **3 canaux couleur (RGB)**.  
+Il n’y a pas de séquences variables, ni de labels multiples par image.
+
+
 
 ### 1.3 Prétraitements (preprocessing) — _appliqués à train/val/test_
 
-Listez précisément les opérations et paramètres (valeurs **fixes**) :
+Les prétraitements suivants sont appliqués de manière identique aux ensembles **train**, **validation** et **test** :
 
-- Vision : resize = __, center-crop = __, normalize = (mean=__, std=__)…
-- Audio : resample = __ Hz, mel-spectrogram (n_mels=__, n_fft=__, hop_length=__), AmplitudeToDB…
-- NLP : tokenizer = __, vocab = __, max_length = __, padding/truncation = __…
-- Séries : normalisation par canal, fenêtrage = __…
+- Vision :
+  - resize : aucun (images déjà en 32×32)
+  - normalize :
+    - mean = `[0.4377, 0.4438, 0.4728]`
+    - std  = `[0.1980, 0.2010, 0.1970]`
 
-**D6.** Quels **prétraitements** avez-vous appliqués (opérations + **paramètres exacts**) et **pourquoi** ?  
-**D7.** Les prétraitements diffèrent-ils entre train/val/test (ils ne devraient pas, sauf recadrage non aléatoire en val/test) ?
+**D6.**  
+Les images sont converties en tenseurs PyTorch puis **normalisées canal par canal** à l’aide des statistiques moyennes et écarts-types calculés sur SVHN.  
+Cette normalisation permet de stabiliser l’optimisation et d’améliorer la vitesse de convergence du réseau.
 
-### 1.4 Augmentation de données — _train uniquement_
-
-- Liste des **augmentations** (opérations + **paramètres** et **probabilités**) :
-  - ex. Flip horizontal p=0.5, RandomResizedCrop scale=__, ratio=__ …
-  - Audio : time/freq masking (taille, nb masques) …
-  - Séries : jitter amplitude=__, scaling=__ …
-
-**D8.** Quelles **augmentations** avez-vous appliquées (paramètres précis) et **pourquoi** ?  
-**D9.** Les augmentations **conservent-elles les labels** ? Justifiez pour chaque transformation retenue.
-
-### 1.5 Sanity-checks
-
-- **Exemples** après preprocessing/augmentation (insérer 2–3 images/spectrogrammes) :
-
-> _Insérer ici 2–3 captures illustrant les données après transformation._
-
-**D10.** Montrez 2–3 exemples et commentez brièvement.  
-**D11.** Donnez la **forme exacte** d’un batch train (ex. `(batch, C, H, W)` ou `(batch, seq_len)`), et vérifiez la cohérence avec `meta["input_shape"]`.
+**D7.**  
+Les prétraitements sont **strictement identiques** pour les ensembles train, validation et test.  
+Aucune transformation aléatoire n’est appliquée en validation ou en test, conformément aux bonnes pratiques.
 
 ---
 
@@ -85,160 +91,259 @@ Listez précisément les opérations et paramètres (valeurs **fixes**) :
 ### 2.1 Baselines
 
 **M0.**
-- **Classe majoritaire** — Métrique : `_____` → score = `_____`
-- **Prédiction aléatoire uniforme** — Métrique : `_____` → score = `_____`  
-_Commentez en 2 lignes ce que ces chiffres impliquent._
+- **Classe majoritaire** — Métrique : *accuracy* → score = **0.196**
+- **Prédiction aléatoire uniforme** — Métrique : *accuracy* → score ≈ **0.10**
+
+Ces résultats montrent que le dataset n’est pas trivial :  
+une prédiction naïve (classe majoritaire ou hasard) donne des performances très faibles, ce qui justifie l’utilisation d’un modèle convolutionnel entraîné.
+
+---
 
 ### 2.2 Architecture implémentée
 
-- **Description couche par couche** (ordre exact, tailles, activations, normalisations, poolings, résiduels, etc.) :
-  - Input → …
-  - Stage 1 (répéter N₁ fois) : …
-  - Stage 2 (répéter N₂ fois) : …
-  - Stage 3 (répéter N₃ fois) : …
-  - Tête (GAP / linéaire) → logits (dimension = nb classes)
+Le modèle implémenté est un **réseau convolutionnel (CNN)** structuré en **trois stages**, suivi d’un global average pooling et d’une couche linéaire de classification.
 
-- **Loss function** :
-  - Multi-classe : CrossEntropyLoss
-  - Multi-label : BCEWithLogitsLoss
-  - (autre, si votre tâche l’impose)
+- **Input** → image `(3, 32, 32)`
+- **Stage 1** (répété 3 fois si `extra_block = true`) :
+  - Conv2d `(3 → 64)`, kernel 3×3, padding 1
+  - BatchNorm2d
+  - ReLU
+- **Stage 2** (répété 3 fois si `extra_block = true`) :
+  - Conv2d `(64 → 128)`, stride 2
+  - BatchNorm2d
+  - ReLU
+- **Stage 3** (répété 3 fois si `extra_block = true`) :
+  - Conv2d `(128 → 256)`, stride 2
+  - BatchNorm2d
+  - ReLU
+- **Tête** :
+  - Global Average Pooling
+  - Linear `(256 → 10)` → logits
 
-- **Sortie du modèle** : forme = __(batch_size, num_classes)__ (ou __(batch_size, num_attributes)__)
+- **Loss function** : CrossEntropyLoss (classification multi-classes)
+- **Sortie du modèle** : `(batch_size, 10)`
+- **Nombre total de paramètres** : **1 923 914**
 
-- **Nombre total de paramètres** : `_____`
+**M1.**  
+Les deux hyperparamètres spécifiques au modèle sont :
+- **`channels`** : définit le nombre de canaux par stage et contrôle la capacité du réseau.
+- **`extra_block`** : ajoute un bloc convolutionnel supplémentaire par stage, augmentant la profondeur et le pouvoir de représentation du modèle.
 
-**M1.** Décrivez l’**architecture** complète et donnez le **nombre total de paramètres**.  
-Expliquez le rôle des **2 hyperparamètres spécifiques au modèle** (ceux imposés par votre sujet).
-
+---
 
 ### 2.3 Perte initiale & premier batch
 
-- **Loss initiale attendue** (multi-classe) ≈ `-log(1/num_classes)` ; exemple 100 classes → ~4.61
-- **Observée sur un batch** : `_____`
-- **Vérification** : backward OK, gradients ≠ 0
+- **Loss initiale attendue** (classification multi-classes) :  
+  \[
+  -\log(1/10) \approx 2.30
+  \]
+- **Loss observée sur un premier batch** : ≈ **2.30**
+- **Vérification** : backward fonctionnel, gradients non nuls
 
-**M2.** Donnez la **loss initiale** observée et dites si elle est cohérente. Indiquez la forme du batch et la forme de sortie du modèle.
+**M2.**  
+La loss initiale observée est cohérente avec la valeur théorique attendue pour une prédiction aléatoire uniforme.  
+La forme d’un batch est `(batch_size, 3, 32, 32)` et la sortie du modèle est `(batch_size, 10)`, ce qui confirme la cohérence entre les données et l’architecture.
 
----
 
 ## 3) Overfit « petit échantillon »
 
-- **Sous-ensemble train** : `N = ____` exemples
-- **Hyperparamètres modèle utilisés** (les 2 à régler) : `_____`, `_____`
-- **Optimisation** : LR = `_____`, weight decay = `_____` (0 ou très faible recommandé)
-- **Nombre d’époques** : `_____`
+- **Sous-ensemble train** : `N = 32` exemples (un seul batch)
+- **Hyperparamètres modèle utilisés** :
+  - `channels = [64, 128, 256]`
+  - `extra_block = true`
+- **Optimisation** :
+  - Learning rate (LR) = `0.001`
+  - Weight decay = `0.0`
+- **Nombre d’époques** : `40`
 
-> _Insérer capture TensorBoard : `train/loss` montrant la descente vers ~0._
+![alt text](<Capture d’écran 2026-01-11 à 21.07.20.png>)
 
-**M3.** Donnez la **taille du sous-ensemble**, les **hyperparamètres** du modèle utilisés, et la **courbe train/loss** (capture). Expliquez ce qui prouve l’overfit.
+**M3.**  
+Le modèle est volontairement entraîné sur un **seul batch** répété afin de vérifier sa capacité à mémoriser parfaitement les données.  
+La loss d’entraînement chute rapidement vers **zéro** et reste stable, ce qui démontre que :
+- le modèle est correctement implémenté,
+- la fonction de perte est adaptée,
+- la rétropropagation fonctionne correctement.
 
----
+Cet overfit contrôlé constitue un **sanity-check essentiel** avant l’entraînement complet.
+
 
 ## 4) LR finder
 
-- **Méthode** : balayage LR (log-scale), quelques itérations, log `(lr, loss)`
-- **Fenêtre stable retenue** : `_____ → _____`
+- **Méthode** : balayage du taux d’apprentissage (log-scale) sur quelques dizaines d’itérations, avec enregistrement des couples `(learning rate, loss)`.
+- **Plage explorée** : de `1e-6` à `2.5e-1`.
+
+![alt text](<Capture d’écran 2026-01-12 à 00.17.49.png>)
+
+- **Fenêtre stable retenue** : **≈ 5e-4 → 1e-3**
 - **Choix pour la suite** :
-  - **LR** = `_____`
-  - **Weight decay** = `_____` (valeurs classiques : 1e-5, 1e-4)
+  - **Learning rate (LR)** = `5e-4`
+  - **Weight decay** = `1e-5`
 
-> _Insérer capture TensorBoard : courbe LR → loss._
-
-**M4.** Justifiez en 2–3 phrases le choix du **LR** et du **weight decay**.
+**M4.**  
+La courbe LR–loss montre une zone stable où la loss diminue sans divergence autour de **5×10⁻⁴ à 10⁻³**.  
+Des valeurs plus élevées entraînent des oscillations ou une augmentation de la loss.  
+Le learning rate retenu permet un compromis entre **vitesse de convergence** et **stabilité**, tandis qu’un weight decay faible est utilisé pour limiter le surapprentissage.
 
 ---
 
 ## 5) Mini grid search (rapide)
 
-- **Grilles** :
-  - LR : `{_____ , _____ , _____}`
-  - Weight decay : `{1e-5, 1e-4}`
-  - Hyperparamètre modèle A : `{_____, _____}`
-  - Hyperparamètre modèle B : `{_____, _____}`
+- **Grilles explorées** :
+  - **Learning rate (LR)** : `{0.0005, 0.001, 0.002}`
+  - **Weight decay (WD)** : `{1e-5, 1e-4}`
+  - **Hyperparamètre modèle A (`channels`)** : `{[64, 128, 256], [48, 96, 192]}`
+  - **Hyperparamètre modèle B (`extra_block`)** : `{false, true}`
 
-- **Durée des runs** : `_____` époques par run (1–5 selon dataset), même seed
+- **Durée des runs** : `3` époques par configuration
+- **Seed** : `42`
+- **Nombre total de runs** : `24`
 
-| Run (nom explicite) | LR    | WD     | Hyp-A | Hyp-B | Val metric (nom=_____) | Val loss | Notes |
-|---------------------|-------|--------|-------|-------|-------------------------|----------|-------|
-|                     |       |        |       |       |                         |          |       |
-|                     |       |        |       |       |                         |          |       |
+| Run (nom explicite) | LR     | WD     | Channels           | Extra block | Val accuracy | Val loss | Notes |
+|---------------------|--------|--------|--------------------|-------------|--------------|----------|-------|
+| lr=5e-4_wd=1e-5     | 0.0005 | 1e-5   | [64,128,256]       | false       | 0.9118       | 0.2932  | Stable |
+| lr=5e-4_wd=1e-5     | 0.0005 | 1e-5   | [64,128,256]       | true        | 0.9380       | 0.2133  | Meilleur |
+| lr=1e-3_wd=1e-5     | 0.001  | 1e-5   | [48,96,192]        | true        | 0.9350       | 0.2374  | Bon compromis |
+| lr=2e-3_wd=1e-4     | 0.002  | 1e-4   | [64,128,256]       | false       | 0.9142       | 0.2843  | Sous-optimal |
 
-> _Insérer capture TensorBoard (onglet HParams/Scalars) ou tableau récapitulatif._
+![alt text](val_accuracy.svg)
 
-**M5.** Présentez la **meilleure combinaison** (selon validation) et commentez l’effet des **2 hyperparamètres de modèle** sur les courbes (stabilité, vitesse, overfit).
+
+**M5.**  
+La meilleure combinaison selon la performance en validation est :
+- **LR = 0.0005**
+- **Weight decay = 1e-5**
+- **Channels = [64, 128, 256]**
+- **Extra block = true**
+
+L’activation de `extra_block` améliore systématiquement les performances en validation, au prix d’un coût de calcul plus élevé.  
+Des valeurs de learning rate trop élevées (`0.002`) entraînent une convergence moins stable, tandis qu’un weight decay trop fort dégrade légèrement la performance.
 
 ---
 
 ## 6) Entraînement complet (10–20 époques, sans scheduler)
 
-- **Configuration finale** :
-  - LR = `_____`
-  - Weight decay = `_____`
-  - Hyperparamètre modèle A = `_____`
-  - Hyperparamètre modèle B = `_____`
-  - Batch size = `_____`
-  - Époques = `_____` (10–20)
-- **Checkpoint** : `artifacts/best.ckpt` (selon meilleure métrique val)
+### Configuration finale
 
-> _Insérer captures TensorBoard :_
-> - `train/loss`, `val/loss`
-> - `val/accuracy` **ou** `val/f1` (classification)
+- **Learning rate (LR)** : `0.0005`
+- **Weight decay** : `1e-5`
+- **Hyperparamètre modèle A (`channels`)** : `[64, 128, 256]`
+- **Hyperparamètre modèle B (`extra_block`)** : `true`
+- **Batch size** : `32`
+- **Nombre d’époques** : `20`
+- **Scheduler** : aucun
+- **Checkpoint sauvegardé** : `artifacts/best.ckpt` (selon meilleure accuracy validation)
 
-**M6.** Montrez les **courbes train/val** (loss + métrique). Interprétez : sous-apprentissage / sur-apprentissage / stabilité d’entraînement.
+![alt text](val_loss-3.svg)
+![alt text](train_loss-2.svg)
+![alt text](val_accuracy-3.svg)
+**M6.**  
+Les courbes d’entraînement montrent une **diminution régulière de la loss d’entraînement**, indiquant une bonne convergence du modèle.  
+La loss de validation diminue également durant les premières époques avant de se stabiliser, tandis que l’accuracy de validation atteint un maximum d’environ **94.6 %**.
+
+Un léger écart entre les courbes train et validation apparaît en fin d’entraînement, ce qui est attendu pour un modèle de cette capacité, mais aucun sur-apprentissage sévère n’est observé.  
+L’entraînement est globalement **stable**, sans divergence ni oscillations majeures.
 
 ---
 
 ## 7) Comparaisons de courbes (analyse)
 
-> _Superposez plusieurs runs dans TensorBoard et insérez 2–3 captures :_
+Plusieurs entraînements ont été superposés dans TensorBoard afin d’analyser l’impact des principaux hyperparamètres sur la convergence et la généralisation du modèle.
 
-- **Variation du LR** (impact au début d’entraînement)
-- **Variation du weight decay** (écart train/val, régularisation)
-- **Variation des 2 hyperparamètres de modèle** (convergence, plateau, surcapacité)
+### Comparaison 1 — Variation du learning rate
+Les runs avec un learning rate plus élevé (`0.002`) montrent une convergence initiale plus rapide mais des oscillations plus importantes de la loss de validation.  
+À l’inverse, un learning rate plus faible (`0.0005`) offre une convergence plus progressive mais plus stable, menant à de meilleures performances finales.
 
-**M7.** Trois **comparaisons** commentées (une phrase chacune) : LR, weight decay, hyperparamètres modèle — ce que vous attendiez vs. ce que vous observez.
+### Comparaison 2 — Variation du weight decay
+Un weight decay trop élevé (`1e-4`) tend à augmenter la loss de validation et à réduire légèrement l’accuracy, indiquant une régularisation excessive.  
+Un weight decay plus faible (`1e-5`) permet un meilleur compromis entre régularisation et capacité d’apprentissage.
 
----
+### Comparaison 3 — Hyperparamètres du modèle (`extra_block`)
+L’ajout d’un bloc convolutionnel supplémentaire par stage (`extra_block = true`) améliore systématiquement la performance en validation.  
+Cependant, cette configuration augmente le nombre de paramètres et le temps d’entraînement, ce qui illustre un compromis classique entre performance et coût de calcul.
+
+**M7.**  
+Globalement, les résultats observés sont cohérents avec les attentes théoriques :  
+un learning rate modéré, une régularisation légère et une architecture plus profonde favorisent une meilleure généralisation.
+
 
 ## 8) Itération supplémentaire (si temps)
 
-- **Changement(s)** : `_____` (resserrage de grille, nouvelle valeur d’un hyperparamètre, etc.)
-- **Résultat** : `_____` (val metric, tendances des courbes)
+- **Changement(s)** :  
+  Prolongation de l’entraînement du meilleur modèle issu de la mini grid search (20 époques au lieu de 3), en conservant les hyperparamètres optimaux :
+  - `LR = 0.0005`
+  - `weight decay = 1e-5`
+  - `channels = [64, 128, 256]`
+  - `extra_block = true`
 
-**M8.** Décrivez cette itération, la motivation et le résultat.
+- **Résultat** :  
+  Amélioration progressive de l’accuracy de validation, atteignant un maximum d’environ **94.6 %**, avant stabilisation.
+
+**M8.**  
+Cette itération visait à vérifier si le modèle sélectionné lors de la grid search continuait à bénéficier d’un entraînement plus long.  
+Les courbes montrent que le modèle converge de manière stable durant les premières époques supplémentaires, avec un léger plateau ensuite.  
+Cela confirme que la configuration retenue est robuste et bien adaptée au dataset SVHN.
 
 ---
 
 ## 9) Évaluation finale (test)
 
 - **Checkpoint évalué** : `artifacts/best.ckpt`
-- **Métriques test** :
-  - Metric principale (nom = `_____`) : `_____`
-  - Metric(s) secondaire(s) : `_____`
 
-**M9.** Donnez les **résultats test** et comparez-les à la validation (écart raisonnable ? surapprentissage probable ?).
+### Métriques sur le jeu de test
+
+- **Métrique principale** : Accuracy
+  - **Accuracy (test)** : **0.9509**
+- **Métrique secondaire** :
+  - **Loss (test)** : **0.1768**
+
+**M9.**  
+Le modèle atteint une accuracy de **95.09 %** sur le jeu de test, légèrement supérieure à celle observée sur le jeu de validation (**≈ 94.6 %**).  
+Cet écart reste faible et cohérent, indiquant une **bonne capacité de généralisation** sans surapprentissage significatif.  
+
+La loss de test relativement basse confirme la **stabilité de l’entraînement** et la pertinence du modèle sélectionné à partir de la validation.
 
 ---
 
 ## 10) Limites, erreurs & bug diary (court)
 
-- **Limites connues** (données, compute, modèle) :
-- **Erreurs rencontrées** (shape mismatch, divergence, NaN…) et **solutions** :
-- **Idées « si plus de temps/compute »** (une phrase) :
+- **Limites connues** :
+  - Le modèle est entraîné uniquement sur des images **32×32**, ce qui limite la capture de contextes plus larges présents dans des images de plus haute résolution.
+  - Aucune augmentation de données n’a été utilisée, ce qui pourrait limiter la robustesse du modèle face à certaines variations (illumination, bruit, rotation).
+
+- **Erreurs rencontrées et solutions** :
+  - *Erreur de chargement du checkpoint* : incompatibilité entre les clés du `state_dict` et le modèle.
+    - **Solution** : alignement strict entre la structure du modèle et le checkpoint sauvegardé, et chargement explicite du bon champ (`model_state_dict`).
+  - *Erreurs liées au GPU / Slurm (time limit)* :
+    - **Solution** : ajustement de la partition Slurm et relance des jobs avec des paramètres compatibles (durée, GPU disponible).
+
+- **Idées si plus de temps ou de calcul** :
+  - Ajouter des **augmentations de données** (random crop, color jitter).
+  - Tester un **scheduler de learning rate** ou une architecture plus profonde (ResNet-like).
 
 ---
 
 ## 11) Reproductibilité
 
-- **Seed** : `_____`
-- **Config utilisée** : joindre un extrait de `configs/config.yaml` (sections pertinentes)
+- **Seed** : `42`
+
+- **Configuration utilisée** :  
+  Les hyperparamètres finaux sont définis dans `configs/config.yaml`, notamment :
+  - `channels = [64, 128, 256]`
+  - `extra_block = true`
+  - `learning rate = 0.0005`
+  - `weight decay = 1e-5`
+  - `batch_size = 32`
+  - `epochs = 20`
+
 - **Commandes exactes** :
 
 ```bash
-# Exemple (remplacer par vos commandes effectives)
-python -m src.train --config configs/config.yaml --max_epochs 15
+# Entraînement final
+python -m src.train --config configs/config.yaml
+
+# Évaluation finale
 python -m src.evaluate --config configs/config.yaml --checkpoint artifacts/best.ckpt
-````
 
 * **Artifacts requis présents** :
 
