@@ -58,7 +58,7 @@ Aucune stratification explicite n’a été appliquée, mais la distribution des
 La distribution des classes montre un **déséquilibre modéré**, certaines classes (notamment le chiffre *1*) étant plus représentées que d’autres.  
 Ce déséquilibre peut favoriser les classes fréquentes lors de l’entraînement, ce qui justifie l’utilisation de métriques globales comme l’accuracy.
 
-![alt text](<Capture d’écran 2026-01-12 à 00.12.41.png>)
+![alt text](<captures/Capture d’écran 2026-01-12 à 00.12.41.png>)
 
 **D5.**  
 Toutes les images ont une taille fixe de **32×32 pixels**, avec **3 canaux couleur (RGB)**.  
@@ -173,7 +173,7 @@ Cet overfit contrôlé constitue un **sanity-check essentiel** avant l’entraî
 - **Méthode** : balayage du taux d’apprentissage (log-scale) sur quelques dizaines d’itérations, avec enregistrement des couples `(learning rate, loss)`.
 - **Plage explorée** : de `1e-6` à `2.5e-1`.
 
-![alt text](<Capture d’écran 2026-01-12 à 00.17.49.png>)
+![alt text](captures/Capture d'écran 2026-01-12 à 00.17.49.png)
 
 - **Fenêtre stable retenue** : **≈ 5e-4 → 1e-3**
 - **Choix pour la suite** :
@@ -206,7 +206,7 @@ Le learning rate retenu permet un compromis entre **vitesse de convergence** et 
 | lr=1e-3_wd=1e-5     | 0.001  | 1e-5   | [48,96,192]        | true        | 0.9350       | 0.2374  | Bon compromis |
 | lr=2e-3_wd=1e-4     | 0.002  | 1e-4   | [64,128,256]       | false       | 0.9142       | 0.2843  | Sous-optimal |
 
-![alt text](val_accuracy.svg)
+![alt text](captures/val_accuracy.svg)
 
 
 **M5.**  
@@ -234,9 +234,10 @@ Des valeurs de learning rate trop élevées (`0.002`) entraînent une convergenc
 - **Scheduler** : aucun
 - **Checkpoint sauvegardé** : `artifacts/best.ckpt` (selon meilleure accuracy validation)
 
-![alt text](val_loss-3.svg)
-![alt text](train_loss-2.svg)
-![alt text](val_accuracy-3.svg)
+![alt text](captures/val_loss-3.svg)
+![alt text](captures/train_loss-2.svg)
+![alt text](captures/val_accuracy-3.svg)
+
 **M6.**  
 Les courbes d’entraînement montrent une **diminution régulière de la loss d’entraînement**, indiquant une bonne convergence du modèle.  
 La loss de validation diminue également durant les premières époques avant de se stabiliser, tandis que l’accuracy de validation atteint un maximum d’environ **94.6 %**.
