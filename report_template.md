@@ -1,11 +1,5 @@
 # Rapport de projet — CSC8607 : Introduction au Deep Learning
 
-> **Consignes générales**
-> - Tenez-vous au **format** et à l’**ordre** des sections ci-dessous.
-> - Intégrez des **captures d’écran TensorBoard** lisibles (loss, métriques, LR finder, comparaisons).
-> - Les chemins et noms de fichiers **doivent** correspondre à la structure du dépôt modèle (ex. `runs/`, `artifacts/best.ckpt`, `configs/config.yaml`).
-> - Répondez aux questions **numérotées** (D1–D11, M0–M9, etc.) directement dans les sections prévues.
-
 ---
 
 ## 0) Informations générales
